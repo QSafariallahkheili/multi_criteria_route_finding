@@ -1,7 +1,7 @@
 
 Three parameters have been included to determine cost attribute of the routes including population density, covid infection rate per 10000 poulation and road length.
 
-. Population density (square kilometer)
+**1- Population density (square kilometer)**
 
 Alter table area add column area double precision;
 
@@ -16,7 +16,7 @@ Update covid set popsensity = (poplation*1000000)/(area)
 This computes the population density per square kilometer unit.
 
 
-. Case per 10000 population
+**2- Case per 10000 population**
 
 The same procedure is done for calculation covid case per 10000 population
 
@@ -31,7 +31,7 @@ The other option is:
 Vector-->data management tools-->join attributes by location and set the geometry predicate as “intersects” 
 
 
-. Road Length
+**3- Road Length**
 
 We calculate the length of each road segment:
 ALTER TABLE roads_intersect ADD length FLOAT;
