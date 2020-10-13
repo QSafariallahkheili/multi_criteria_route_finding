@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <title>My APP</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"/> 
+        <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    </head>
+
+    </body>
+        
+        <input name="opacity" type="range" id="sldOpacity" min="0" max="1" step="0.1" value="0.5" /></input>
+        <label >Opacity</label>
+
+        <form method="POST" enctype="multipart/form-data" action="" name="userForm"> 
+            {% csrf_token %}
+            <input type= "text" id = "sourceLatt" name = "sourceLatt" value = "" style="display:none" >
+            <input type= "text" id = "sourceLonn" name = "sourceLonn" value = "" style="display:none" >
+            <input type= "text" id = "targetLatt" name = "targetLatt" value = "" style="display:none" >
+            <input type= "text" id = "targetLonn" name = "targetLonn" value = "" style="display:none" >
+            <button type="submit" >Find Route</button>     
+        </form>
+
+        <div id="map" style="height: 500px; width: 750px; margin-left: 10px; float:left">
+
+        </div>
+
+        <script>
+            var map = L.map("map", {
+                center: [48.847878, 2.422566],
+                zoom: 16
+            });
+            var sourceLat, sourceLon, targetLat, targetLon;
+            // getting lat lng of the marker and sending to django view with ajax
+            var sourceMarker = L.marker([{{user_lat|safe}}, {{user_lon|safe}}], {draggable:'true'}).on('dragend', function(event) {
+                var latlng = event.target.getLatLng();
+                sourceLat = latlng.lat;
+                sourceLon = latlng.lng;
+                console.log(sourceLat)
+                document.getElementById("sourceLatt").value =sourceLat.toFixed(12);
+                document.getElementById("sourceLonn").value =sourceLon.toFixed(12);
+
+
+                $.ajax({
+
+                    url: '', //it means send it to the root url that was set before
+                    data: {
+                        'sourceLat': sourceLat,
+                        'sourceLon': sourceLon,
+                        'targetLat': targetLat, // we also send the target position to avoid non value in python view
+                        'targetLon': targetLon,
+
+                    },
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.is_taken) {
+                            alert("A user with this username already exists.");
+                        }
+                }
+            });
+            }).addTo(map).bindPopup("Source");
+            var targetMarker = L.marker([{{user_latt|safe}}, {{user_lonn|safe}}], {draggable:'true'}).on('dragend', function(event) {
+                var latlng = event.target.getLatLng();
+                targetLat = latlng.lat;
+                targetLon = latlng.lng;
+                document.getElementById("targetLatt").value =targetLat.toFixed(12);
+                document.getElementById("targetLonn").value =targetLon.toFixed(12);
+
+
+                $.ajax({
+                    url: '', //it means send it to the root url that was set before
+                    data: {
+                        'sourceLat': sourceLat,
+                        'sourceLon': sourceLon,
+                        'targetLat': targetLat, // we also send the target position to avoid non value in python view
+                        'targetLon': targetLon,
+                    },
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.is_taken) {
+                            alert("ok");
+                        }
+                    }    
+                });
+            }).addTo(map).bindPopup("Target");;
+
+            function onEachFeature(feature, layer) {
+
+                var popupText = "<b>id:</b> " + feature.properties.id +
+                    "<br><b>Source:</b> " + feature.properties.source +
+                    "<br><b>Target:</b> " + feature.properties.target +
+                    "<br><b>Length:</b> " + feature.properties.dist+
+                    "<br><b>Cost:</b> " + feature.properties.cost;;
+
+                layer.bindPopup(popupText, {
+                    closeButton: true,
+                    offset: L.point(0, -10)
+                });
+                layer.on("click", function() {
+                    layer.openPopup();
+                });
+
+            };
+
+            function onEachFeaturePoint(feature, layer) {
+
+                var popupText = "<b>id:</b> " + feature.properties.id 
+
+                layer.bindPopup(popupText, {
+                    closeButton: true,
+                    offset: L.point(0, -10)
+                });
+                layer.on("click", function() {
+                    layer.openPopup();
+                });
+
+            };
+            // Basemap source: https://leaflet-extras.github.io/leaflet-providers/preview/ 
+            var osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map)
+            var topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png").addTo(map)
+            var dark = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png").addTo(map)
+            
+            //var dataset = {{ routes|safe }};
+            //console.log(dataset)
+            var roaddata = {{nn|safe}}
+            var roadFinal = JSON.parse(roaddata[0][0])
+            console.log(roadFinal)
+
+            var topodata = {{points|safe}}
+            var topoFinal = JSON.parse(topodata[0][0])
+            console.log(topoFinal)
+
+            function style(feature) {
+           
+                return {
+                    //fillColor: getColor(feature.properties.score),
+                    weight: 6,
+                    opacity: 0.8,
+                    color: "purple",
+                    //dashArray: "4",
+                    fillOpacity: 0.7
+                };
+	        }
+            //// changing opacity of polygons and their borders
+            
+            $("#sldOpacity").on("change", function(){
+                roadNetwork.setStyle({opacity: this.value, fillOpacity: this.value});
+            });
+            
+            
+            var roadNetwork = L.geoJson(roadFinal, {
+                
+                style: style,
+                onEachFeature: onEachFeature}).addTo(map);
+            
+
+
+            var topology = L.geoJson(topoFinal, {
+                pointToLayer: function(feature, latlng) {
+                    return new L.CircleMarker(latlng, {radius: 3,
+                                                         color: '#FF0000',
+                                                         opacity: 0, /// not showing border line of circles
+                                                         fillColor:'#FF0000',
+                                                         fillOpacity: 0.6});
+                },
+                onEachFeature: onEachFeaturePoint
+                }).addTo(map);
+
+            var baseMaps = {
+                "TOPO": topo,
+                "Dark": dark,
+                "OSM": osm,
+      
+            };
+            var layers = {
+                "roadNetwork" : roadNetwork,
+                "Topology" : topology,
+                
+                
+            }
+            
+
+            L.control.layers(baseMaps, layers).addTo(map);
+           
+        </script>
+    </body>
+
+</html>
