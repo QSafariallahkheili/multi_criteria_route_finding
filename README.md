@@ -39,8 +39,7 @@ UPDATE roads_intersect SET length = st_length(st_transform(geom, 26986));
 
 It computes the length of road segments in meters.
 
-. Compute cost
-
+**Cost computation**
 To compute cost we use the normalized value of population density, infection rate and length. And finally we simply sum up these value and assign it to line segments.
 
 update roads_intersect set totcost = (lengthnormal+popdennormal+infratenormal);
@@ -60,13 +59,13 @@ In which id and geom are column names in our table. After that a noded column is
 
 Then we create topology over created noded network:
 
-pgr_createTopology('edge_table',0.001,'geom','id','source','target','true')
+pgr_createTopology('paris_routes_noded',0.001,'geom','id','source','target','true')
 and then :
 
-SELECT pgr_nodeNetwork('edge_table', 0.001);
+SELECT pgr_nodeNetwork('paris_routes_noded', 0.001);
 
 
-Finding nearest source and sarget point
+**Finding nearest source and sarget point**
 
 Here, we have the topology point layer. So, we find the nearest points from previously user-defined source and target coordinates using ST_Distance function and we retrieve the source id and target id of nearest points to the user-defined points by ordering them by computed distance and retrieve the first element of the resulted array.
 
